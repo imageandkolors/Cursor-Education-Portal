@@ -1,6 +1,6 @@
-import { UserRole, LicenseType, LicenseStatus, NotificationType, MaterialType, AttendanceStatus, ExamType, QuestionType, DifficultyLevel, AttemptStatus, SubmissionStatus } from '@prisma/client'
+import { UserRole, LicenseType, LicenseStatus, NotificationType, MaterialType, AttendanceStatus, ExamType, QuestionType, DifficultyLevel, AttemptStatus, SubmissionStatus, FeeType, PaymentMethod, PaymentStatus, ReceiptStatus, ProductCategory, ProductType, RequestStatus, OrderStatus } from '@prisma/client'
 
-export type { UserRole, LicenseType, LicenseStatus, NotificationType, MaterialType, AttendanceStatus, ExamType, QuestionType, DifficultyLevel, AttemptStatus, SubmissionStatus }
+export type { UserRole, LicenseType, LicenseStatus, NotificationType, MaterialType, AttendanceStatus, ExamType, QuestionType, DifficultyLevel, AttemptStatus, SubmissionStatus, FeeType, PaymentMethod, PaymentStatus, ReceiptStatus, ProductCategory, ProductType, RequestStatus, OrderStatus }
 
 export interface User {
   id: string
@@ -436,4 +436,268 @@ export interface AssignmentSubmission {
   submittedAt: Date
   gradedAt?: Date
   status: SubmissionStatus
+}
+
+export interface FeeStructure {
+  id: string
+  schoolId: string
+  branchId?: string
+  classId?: string
+  term: string
+  session: string
+  feeType: FeeType
+  name: string
+  description?: string
+  amount: number
+  dueDate: Date
+  isActive: boolean
+  isRequired: boolean
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string
+  school?: {
+    name: string
+    code: string
+  }
+  branch?: {
+    name: string
+    code: string
+  }
+  _count?: {
+    payments: number
+  }
+}
+
+export interface Payment {
+  id: string
+  schoolId: string
+  branchId?: string
+  studentId: string
+  feeStructureId: string
+  amount: number
+  paymentMethod: PaymentMethod
+  status: PaymentStatus
+  paidAt?: Date
+  verifiedAt?: Date
+  verifiedBy?: string
+  notes?: string
+  reference?: string
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string
+  student?: {
+    firstName: string
+    lastName: string
+    email: string
+    username: string
+  }
+  feeStructure?: {
+    name: string
+    feeType: FeeType
+    term: string
+    session: string
+    dueDate: Date
+  }
+  school?: {
+    name: string
+    code: string
+  }
+  branch?: {
+    name: string
+    code: string
+  }
+  _count?: {
+    receipts: number
+    eReceipts: number
+  }
+}
+
+export interface Receipt {
+  id: string
+  paymentId: string
+  feeStructureId: string
+  studentId: string
+  fileName: string
+  filePath: string
+  fileSize: number
+  mimeType: string
+  status: ReceiptStatus
+  verifiedAt?: Date
+  verifiedBy?: string
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface EReceipt {
+  id: string
+  paymentId: string
+  studentId: string
+  receiptNumber: string
+  qrCode: string
+  watermark: string
+  pdfPath: string
+  expiresAt: Date
+  isDownloaded: boolean
+  downloadedAt?: Date
+  createdAt: Date
+}
+
+export interface Product {
+  id: string
+  schoolId: string
+  branchId?: string
+  name: string
+  description?: string
+  category: ProductCategory
+  type: ProductType
+  price: number
+  cost: number
+  sku: string
+  stock: number
+  minStock: number
+  isActive: boolean
+  isDigital: boolean
+  filePath?: string
+  fileSize?: number
+  mimeType?: string
+  downloadLimit?: number
+  downloadExpiry?: number
+  imageUrl?: string
+  tags: string[]
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string
+  school?: {
+    name: string
+    code: string
+  }
+  branch?: {
+    name: string
+    code: string
+  }
+  _count?: {
+    orders: number
+    requests: number
+  }
+}
+
+export interface ProductRequest {
+  id: string
+  productId?: string
+  schoolId: string
+  branchId?: string
+  requestedBy: string
+  name: string
+  description?: string
+  category: ProductCategory
+  estimatedPrice?: number
+  quantity: number
+  status: RequestStatus
+  approvedAt?: Date
+  approvedBy?: string
+  rejectedAt?: Date
+  rejectedBy?: string
+  rejectionReason?: string
+  createdAt: Date
+  updatedAt: Date
+  product?: {
+    name: string
+    sku: string
+    price: number
+    imageUrl?: string
+  }
+  requester?: {
+    firstName: string
+    lastName: string
+    email: string
+    role: UserRole
+  }
+  school?: {
+    name: string
+    code: string
+  }
+  branch?: {
+    name: string
+    code: string
+  }
+}
+
+export interface Order {
+  id: string
+  schoolId: string
+  branchId?: string
+  studentId: string
+  orderNumber: string
+  status: OrderStatus
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  paymentMethod: PaymentMethod
+  paymentStatus: PaymentStatus
+  paidAt?: Date
+  shippedAt?: Date
+  deliveredAt?: Date
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+  school?: {
+    name: string
+    code: string
+  }
+  branch?: {
+    name: string
+    code: string
+  }
+  student?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+  items?: OrderItem[]
+  payments?: OrderPayment[]
+}
+
+export interface OrderItem {
+  id: string
+  orderId: string
+  productId: string
+  quantity: number
+  price: number
+  total: number
+  product?: Product
+}
+
+export interface OrderPayment {
+  id: string
+  orderId: string
+  amount: number
+  paymentMethod: PaymentMethod
+  status: PaymentStatus
+  reference?: string
+  paidAt?: Date
+  createdAt: Date
+}
+
+export interface ProductDownload {
+  id: string
+  productId: string
+  orderId: string
+  studentId: string
+  downloadToken: string
+  downloadUrl: string
+  expiresAt: Date
+  isUsed: boolean
+  usedAt?: Date
+  ipAddress?: string
+  userAgent?: string
+  createdAt: Date
+  product?: Product
+  order?: Order
+  student?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
 }
