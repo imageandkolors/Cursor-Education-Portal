@@ -1,0 +1,1126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  branches    Branch[]
+  users       User[]
+  licenses    License[]
+  settings    SchoolSettings[]
+  auditLogs   AuditLog[]
+  notifications Notification[]
+  classrooms  Classroom[]
+  questions   Question[]
+  feeStructures FeeStructure[]
+  payments    Payment[]
+  products    Product[]
+  productRequests ProductRequest[]
+  forums      Forum[]
+
+  @@map("schools")
+}
+
+model Branch {
+  id          String   @id @default(uuid())
+  schoolId    String
+  name        String
+  code        String
+  address     String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  users       User[]
+  licenses    License[]
+  settings    BranchSettings[]
+  auditLogs   AuditLog[]
+  notifications Notification[]
+  classrooms  Classroom[]
+  questions   Question[]
+  forums      Forum[]
+
+  @@unique([schoolId, code])
+  @@map("branches")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  email       String   @unique
+  username    String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  phone       String?
+  role        UserRole
+  isActive    Boolean  @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  licenses    License[]
+  auditLogs   AuditLog[]
+  notifications Notification[]
+  classrooms  Classroom[]
+  enrollments ClassroomEnrollment[]
+  discussions ClassroomDiscussion[]
+  replies     DiscussionReply[]
+  attendances ClassroomAttendance[]
+  exams       Exam[]
+  assignments Assignment[]
+  submissions AssignmentSubmission[]
+  questions   Question[]
+  answers     Answer[]
+  attempts    ExamAttempt[]
+  payments    Payment[]
+  receipts    Receipt[]
+  eReceipts   EReceipt[]
+  productRequests ProductRequest[]
+  orders      Order[]
+  downloads   ProductDownload[]
+  forumsCreated   Forum[]                   @relation("ForumCreator")
+  forumsApproved  Forum[]                   @relation("ForumApprover")
+  forumModerators ForumModerator[]
+  posts           Post[]
+  replies         Reply[]
+  postLikes       PostLike[]
+  replyLikes      ReplyLike[]
+  postModerations PostModeration[]
+  replyModerations ReplyModeration[]
+
+  @@map("users")
+}
+
+model License {
+  id              String        @id @default(uuid())
+  schoolId        String
+  branchId        String?
+  userId          String?
+  licenseKey      String        @unique
+  deviceId        String?
+  deviceName      String?
+  licenseType     LicenseType   @default(EDUCATIONAL)
+  status          LicenseStatus @default(ACTIVE)
+  expiresAt       DateTime?
+  maxDevices      Int           @default(1)
+  usedDevices     Int           @default(0)
+  features        String[]      @default([]) // JSON array of enabled features
+  isOfflineMode   Boolean       @default(false)
+  lastSyncAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+
+  // Relations
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  auditLogs       AuditLog[]
+
+  @@map("licenses")
+}
+
+model SchoolSettings {
+  id          String   @id @default(uuid())
+  schoolId    String
+  key         String
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, key])
+  @@map("school_settings")
+}
+
+model BranchSettings {
+  id          String   @id @default(uuid())
+  branchId    String
+  key         String
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, key])
+  @@map("branch_settings")
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  details     String?     // JSON string with additional details
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  license     License?    @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+
+  licenseId   String?
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  userId      String?
+  title       String
+  message     String
+  type        NotificationType @default(INFO)
+  isRead      Boolean          @default(false)
+  isGlobal    Boolean          @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+  createdBy   String?
+
+  // Relations
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+  BURSAR
+  STORE_MANAGER
+}
+
+enum LicenseType {
+  EDUCATIONAL
+  COMMERCIAL
+  TRIAL
+  DEMO
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  REVOKED
+  PENDING
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  LICENSE_EXPIRY
+  LICENSE_REVOKED
+}
+
+model Classroom {
+  id          String   @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  teacherId   String
+  name        String
+  code        String   @unique
+  description String?
+  subject     String
+  grade       String?
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(false)
+  maxStudents Int      @default(50)
+  currentStudents Int  @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments ClassroomEnrollment[]
+  materials   ClassroomMaterial[]
+  discussions ClassroomDiscussion[]
+  attendances ClassroomAttendance[]
+  exams       Exam[]
+  assignments Assignment[]
+
+  @@map("classrooms")
+}
+
+model ClassroomEnrollment {
+  id          String   @id @default(uuid())
+  classroomId String
+  studentId   String
+  enrolledBy  String?  // User ID who enrolled the student
+  enrolledAt  DateTime @default(now())
+  isActive    Boolean  @default(true)
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+  @@map("classroom_enrollments")
+}
+
+model ClassroomMaterial {
+  id          String   @id @default(uuid())
+  classroomId String
+  title       String
+  description String?
+  type        MaterialType
+  url         String?
+  filePath    String?
+  fileSize    Int?
+  mimeType    String?
+  isRequired  Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@map("classroom_materials")
+}
+
+model ClassroomDiscussion {
+  id          String   @id @default(uuid())
+  classroomId String
+  userId      String
+  title       String
+  content     String
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies     DiscussionReply[]
+
+  @@map("classroom_discussions")
+}
+
+model DiscussionReply {
+  id           String   @id @default(uuid())
+  discussionId String
+  userId       String
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  discussion   ClassroomDiscussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("discussion_replies")
+}
+
+model ClassroomAttendance {
+  id          String   @id @default(uuid())
+  classroomId String
+  studentId   String
+  date        DateTime @db.Date
+  status      AttendanceStatus @default(PRESENT)
+  checkInTime DateTime?
+  checkOutTime DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId, date])
+  @@map("classroom_attendances")
+}
+
+model Exam {
+  id          String   @id @default(uuid())
+  classroomId String
+  teacherId   String
+  title       String
+  description String?
+  type        ExamType @default(ASSIGNMENT)
+  duration    Int      // in minutes
+  totalMarks  Int
+  passingMarks Int
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+  allowRetake Boolean  @default(false)
+  maxAttempts Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  tokens      ExamToken[]
+  questions   Question[]
+  attempts    ExamAttempt[]
+
+  @@map("exams")
+}
+
+model ExamToken {
+  id          String   @id @default(uuid())
+  examId      String
+  token       String   @unique
+  studentId   String?
+  isUsed      Boolean  @default(false)
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  createdBy   String
+
+  // Relations
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     User?    @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@map("exam_tokens")
+}
+
+model Question {
+  id          String   @id @default(uuid())
+  examId      String
+  schoolId    String
+  branchId    String?
+  classroomId String
+  subject     String
+  term        String
+  teacherId   String
+  question    String
+  type        QuestionType
+  options     String[] // JSON array for multiple choice
+  correctAnswer String?
+  explanation String?
+  marks       Int      @default(1)
+  difficulty  DifficultyLevel @default(MEDIUM)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  answers     Answer[]
+
+  @@map("questions")
+}
+
+model Answer {
+  id          String   @id @default(uuid())
+  questionId  String
+  studentId   String
+  answer      String
+  isCorrect   Boolean?
+  marksObtained Int?
+  timeSpent   Int?     // in seconds
+  createdAt   DateTime @default(now())
+
+  // Relations
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, studentId])
+  @@map("answers")
+}
+
+model ExamAttempt {
+  id          String   @id @default(uuid())
+  examId      String
+  studentId   String
+  token       String
+  startTime   DateTime
+  endTime     DateTime?
+  submittedAt DateTime?
+  totalMarks  Int      @default(0)
+  marksObtained Int    @default(0)
+  percentage  Float    @default(0)
+  status      AttemptStatus @default(IN_PROGRESS)
+  isOffline   Boolean  @default(false)
+  syncedAt    DateTime?
+  deviceInfo  String?  // JSON string with device details
+  cheatAttempts Int    @default(0)
+  tabSwitches Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("exam_attempts")
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  classroomId String
+  teacherId   String
+  title       String
+  description String
+  instructions String?
+  dueDate     DateTime
+  totalMarks  Int
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String   @id @default(uuid())
+  assignmentId String
+  studentId    String
+  content      String
+  filePath     String?
+  marksObtained Int?
+  feedback     String?
+  submittedAt  DateTime @default(now())
+  gradedAt     DateTime?
+  status       SubmissionStatus @default(SUBMITTED)
+
+  // Relations
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+// Enums
+enum MaterialType {
+  PDF
+  AUDIO
+  VIDEO
+  DOCUMENT
+  IMAGE
+  LINK
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum ExamType {
+  ASSIGNMENT
+  QUIZ
+  MIDTERM
+  FINAL
+  PRACTICE
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  FILL_BLANK
+  SHORT_ANSWER
+  ESSAY
+  MATCHING
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  TIMED_OUT
+  DISQUALIFIED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  GRADED
+  RETURNED
+}
+
+model FeeStructure {
+  id          String   @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  classId     String?
+  term        String
+  session     String
+  feeType     FeeType
+  name        String
+  description String?
+  amount      Decimal  @db.Decimal(10, 2)
+  dueDate     DateTime
+  isActive    Boolean  @default(true)
+  isRequired  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  payments    Payment[]
+  receipts    Receipt[]
+
+  @@map("fee_structures")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  schoolId        String
+  branchId        String?
+  studentId       String
+  feeStructureId  String
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  notes           String?
+  reference       String?       // Bank reference, transaction ID, etc.
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String
+
+  // Relations
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  receipts        Receipt[]
+  eReceipts       EReceipt[]
+
+  @@map("payments")
+}
+
+model Receipt {
+  id          String        @id @default(uuid())
+  paymentId   String
+  feeStructureId String
+  studentId   String
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  status      ReceiptStatus @default(PENDING)
+  verifiedAt  DateTime?
+  verifiedBy  String?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  payment     Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  student     User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("receipts")
+}
+
+model EReceipt {
+  id          String   @id @default(uuid())
+  paymentId   String
+  studentId   String
+  receiptNumber String @unique
+  qrCode      String
+  watermark   String
+  pdfPath     String
+  expiresAt   DateTime
+  isDownloaded Boolean @default(false)
+  downloadedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("e_receipts")
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  name        String
+  description String?
+  category    ProductCategory
+  type        ProductType
+  price       Decimal     @db.Decimal(10, 2)
+  cost        Decimal     @db.Decimal(10, 2)
+  sku         String      @unique
+  stock       Int         @default(0)
+  minStock    Int         @default(0)
+  isActive    Boolean     @default(true)
+  isDigital   Boolean     @default(false)
+  filePath    String?     // For digital products
+  fileSize    Int?        // For digital products
+  mimeType    String?     // For digital products
+  downloadLimit Int?      // For digital products
+  downloadExpiry Int?     // Days until download expires
+  imageUrl    String?
+  tags        String[]    @default([])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   String
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  orders      Order[]
+  requests    ProductRequest[]
+  downloads   ProductDownload[]
+
+  @@map("products")
+}
+
+model ProductRequest {
+  id          String            @id @default(uuid())
+  productId   String?
+  schoolId    String
+  branchId    String?
+  requestedBy String
+  name        String
+  description String?
+  category    ProductCategory
+  estimatedPrice Decimal?       @db.Decimal(10, 2)
+  quantity    Int               @default(1)
+  status      RequestStatus     @default(PENDING)
+  approvedAt  DateTime?
+  approvedBy  String?
+  rejectedAt  DateTime?
+  rejectedBy  String?
+  rejectionReason String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  product     Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  requester   User              @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
+
+  @@map("product_requests")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  studentId   String
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
+  subtotal    Decimal     @db.Decimal(10, 2)
+  tax         Decimal     @db.Decimal(10, 2) @default(0)
+  discount    Decimal     @db.Decimal(10, 2) @default(0)
+  total       Decimal     @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  paidAt      DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  student     User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items       OrderItem[]
+  payments    OrderPayment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+
+  // Relations
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model OrderPayment {
+  id          String        @id @default(uuid())
+  orderId     String
+  amount      Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  reference   String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_payments")
+}
+
+model ProductDownload {
+  id          String   @id @default(uuid())
+  productId   String
+  orderId     String
+  studentId   String
+  downloadToken String @unique
+  downloadUrl String
+  expiresAt   DateTime
+  isUsed      Boolean  @default(false)
+  usedAt      DateTime?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("product_downloads")
+}
+
+model Forum {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  name        String
+  description String?
+  category    String?
+  isPublic    Boolean     @default(true)
+  isActive    Boolean     @default(true)
+  status      ForumStatus @default(ACTIVE)
+  createdBy   String
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  creator     User        @relation("ForumCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  approver    User?       @relation("ForumApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  posts       Post[]
+  moderators  ForumModerator[]
+
+  @@map("forums")
+}
+
+model ForumModerator {
+  id        String   @id @default(uuid())
+  forumId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  forum     Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([forumId, userId])
+  @@map("forum_moderators")
+}
+
+model Post {
+  id          String     @id @default(uuid())
+  forumId     String
+  schoolId    String
+  branchId    String?
+  authorId    String
+  title       String
+  content     String
+  type        PostType   @default(DISCUSSION)
+  status      PostStatus @default(PUBLISHED)
+  isPinned    Boolean    @default(false)
+  isLocked    Boolean    @default(false)
+  viewCount   Int        @default(0)
+  likeCount   Int        @default(0)
+  replyCount  Int        @default(0)
+  lastReplyAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  forum       Forum      @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  school      School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replies     Reply[]
+  likes       PostLike[]
+  attachments PostAttachment[]
+  moderation  PostModeration[]
+
+  @@map("posts")
+}
+
+model Reply {
+  id          String     @id @default(uuid())
+  postId      String
+  authorId    String
+  content     String
+  status      PostStatus @default(PUBLISHED)
+  likeCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       ReplyLike[]
+  moderation  ReplyModeration[]
+
+  @@map("replies")
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+model ReplyLike {
+  id        String   @id @default(uuid())
+  replyId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  reply     Reply    @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([replyId, userId])
+  @@map("reply_likes")
+}
+
+model PostAttachment {
+  id        String   @id @default(uuid())
+  postId    String
+  fileName  String
+  filePath  String
+  fileSize  Int
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  // Relations
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_attachments")
+}
+
+model PostModeration {
+  id        String           @id @default(uuid())
+  postId    String
+  moderatorId String
+  action    ModerationAction
+  reason    String?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  post      Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  moderator User             @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@map("post_moderation")
+}
+
+model ReplyModeration {
+  id          String           @id @default(uuid())
+  replyId     String
+  moderatorId String
+  action      ModerationAction
+  reason      String?
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  reply       Reply            @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  moderator   User             @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@map("reply_moderation")
+}
+
+// Enums
+enum FeeType {
+  TUITION
+  EXAMINATION
+  LIBRARY
+  TRANSPORT
+  MEALS
+  UNIFORM
+  BOOKS
+  SPORTS
+  EXTRACURRICULAR
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CARD
+  CHEQUE
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  REFUNDED
+}
+
+enum ReceiptStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ProductCategory {
+  BOOKS
+  UNIFORMS
+  STATIONERY
+  ELECTRONICS
+  SPORTS
+  FOOD
+  TRANSPORT
+  SERVICES
+  DIGITAL
+  OTHER
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+  SERVICE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum ForumStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum PostStatus {
+  PUBLISHED
+  PENDING
+  HIDDEN
+  DELETED
+}
+
+enum PostType {
+  DISCUSSION
+  ANNOUNCEMENT
+  QUESTION
+  POLL
+  EVENT
+}
+
+enum ModerationAction {
+  APPROVE
+  REJECT
+  HIDE
+  DELETE
+  PIN
+  UNPIN
+  LOCK
+  UNLOCK
+}

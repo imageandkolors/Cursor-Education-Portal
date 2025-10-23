@@ -1,0 +1,218 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Ionic React styles */
+@import '@ionic/react/css/core.css';
+@import '@ionic/react/css/normalize.css';
+@import '@ionic/react/css/structure.css';
+@import '@ionic/react/css/typography.css';
+@import '@ionic/react/css/padding.css';
+@import '@ionic/react/css/float-elements.css';
+@import '@ionic/react/css/text-alignment.css';
+@import '@ionic/react/css/text-transformation.css';
+@import '@ionic/react/css/flex-utils.css';
+@import '@ionic/react/css/display.css';
+
+/* Custom styles */
+.ion-page {
+  background: hsl(var(--background));
+}
+
+.ion-content {
+  --background: hsl(var(--background));
+  --color: hsl(var(--foreground));
+}
+
+.ion-header {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-toolbar {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-button {
+  --background: hsl(var(--primary));
+  --color: hsl(var(--primary-foreground));
+}
+
+.ion-button-outline {
+  --background: transparent;
+  --color: hsl(var(--primary));
+  --border-color: hsl(var(--primary));
+}
+
+.ion-card {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-item {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-input {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-textarea {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-select {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-datetime {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-toggle {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-checkbox {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-radio {
+  --color: hsl(var(--primary));
+}
+
+.ion-range {
+  --bar-background: hsl(var(--input));
+  --bar-background-active: hsl(var(--primary));
+  --knob-background: hsl(var(--primary));
+}
+
+.ion-segment {
+  --background: hsl(var(--input));
+  --color: hsl(var(--foreground));
+}
+
+.ion-segment-button {
+  --background: transparent;
+  --color: hsl(var(--muted-foreground));
+}
+
+.ion-segment-button-checked {
+  --background: hsl(var(--primary));
+  --color: hsl(var(--primary-foreground));
+}
+
+.ion-tab-bar {
+  --background: hsl(var(--card));
+  --color: hsl(var(--muted-foreground));
+}
+
+.ion-tab-button {
+  --color: hsl(var(--muted-foreground));
+}
+
+.ion-tab-button-selected {
+  --color: hsl(var(--primary));
+}
+
+.ion-refresher {
+  --background: hsl(var(--background));
+}
+
+.ion-infinite-scroll {
+  --background: hsl(var(--background));
+}
+
+.ion-loading {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-alert {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-action-sheet {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-modal {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-popover {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
+
+.ion-toast {
+  --background: hsl(var(--card));
+  --color: hsl(var(--card-foreground));
+}
