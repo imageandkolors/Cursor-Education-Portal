@@ -1,0 +1,230 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  branches    Branch[]
+  users       User[]
+  licenses    License[]
+  settings    SchoolSettings[]
+  auditLogs   AuditLog[]
+  notifications Notification[]
+
+  @@map("schools")
+}
+
+model Branch {
+  id          String   @id @default(uuid())
+  schoolId    String
+  name        String
+  code        String
+  address     String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  users       User[]
+  licenses    License[]
+  settings    BranchSettings[]
+  auditLogs   AuditLog[]
+  notifications Notification[]
+
+  @@unique([schoolId, code])
+  @@map("branches")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  email       String   @unique
+  username    String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  phone       String?
+  role        UserRole
+  isActive    Boolean  @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  licenses    License[]
+  auditLogs   AuditLog[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model License {
+  id              String        @id @default(uuid())
+  schoolId        String
+  branchId        String?
+  userId          String?
+  licenseKey      String        @unique
+  deviceId        String?
+  deviceName      String?
+  licenseType     LicenseType   @default(EDUCATIONAL)
+  status          LicenseStatus @default(ACTIVE)
+  expiresAt       DateTime?
+  maxDevices      Int           @default(1)
+  usedDevices     Int           @default(0)
+  features        String[]      @default([]) // JSON array of enabled features
+  isOfflineMode   Boolean       @default(false)
+  lastSyncAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+
+  // Relations
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  auditLogs       AuditLog[]
+
+  @@map("licenses")
+}
+
+model SchoolSettings {
+  id          String   @id @default(uuid())
+  schoolId    String
+  key         String
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, key])
+  @@map("school_settings")
+}
+
+model BranchSettings {
+  id          String   @id @default(uuid())
+  branchId    String
+  key         String
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, key])
+  @@map("branch_settings")
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  details     String?     // JSON string with additional details
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  license     License?    @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+
+  licenseId   String?
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  userId      String?
+  title       String
+  message     String
+  type        NotificationType @default(INFO)
+  isRead      Boolean          @default(false)
+  isGlobal    Boolean          @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+  createdBy   String?
+
+  // Relations
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+  BURSAR
+  STORE_MANAGER
+}
+
+enum LicenseType {
+  EDUCATIONAL
+  COMMERCIAL
+  TRIAL
+  DEMO
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  REVOKED
+  PENDING
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+  LICENSE_EXPIRY
+  LICENSE_REVOKED
+}
