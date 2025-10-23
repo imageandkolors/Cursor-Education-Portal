@@ -30,6 +30,8 @@ model School {
   settings    SchoolSettings[]
   auditLogs   AuditLog[]
   notifications Notification[]
+  classrooms  Classroom[]
+  questions   Question[]
 
   @@map("schools")
 }
@@ -54,6 +56,8 @@ model Branch {
   settings    BranchSettings[]
   auditLogs   AuditLog[]
   notifications Notification[]
+  classrooms  Classroom[]
+  questions   Question[]
 
   @@unique([schoolId, code])
   @@map("branches")
@@ -82,6 +86,17 @@ model User {
   licenses    License[]
   auditLogs   AuditLog[]
   notifications Notification[]
+  classrooms  Classroom[]
+  enrollments ClassroomEnrollment[]
+  discussions ClassroomDiscussion[]
+  replies     DiscussionReply[]
+  attendances ClassroomAttendance[]
+  exams       Exam[]
+  assignments Assignment[]
+  submissions AssignmentSubmission[]
+  questions   Question[]
+  answers     Answer[]
+  attempts    ExamAttempt[]
 
   @@map("users")
 }
@@ -227,4 +242,347 @@ enum NotificationType {
   SUCCESS
   LICENSE_EXPIRY
   LICENSE_REVOKED
+}
+
+model Classroom {
+  id          String   @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  teacherId   String
+  name        String
+  code        String   @unique
+  description String?
+  subject     String
+  grade       String?
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(false)
+  maxStudents Int      @default(50)
+  currentStudents Int  @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments ClassroomEnrollment[]
+  materials   ClassroomMaterial[]
+  discussions ClassroomDiscussion[]
+  attendances ClassroomAttendance[]
+  exams       Exam[]
+  assignments Assignment[]
+
+  @@map("classrooms")
+}
+
+model ClassroomEnrollment {
+  id          String   @id @default(uuid())
+  classroomId String
+  studentId   String
+  enrolledBy  String?  // User ID who enrolled the student
+  enrolledAt  DateTime @default(now())
+  isActive    Boolean  @default(true)
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+  @@map("classroom_enrollments")
+}
+
+model ClassroomMaterial {
+  id          String   @id @default(uuid())
+  classroomId String
+  title       String
+  description String?
+  type        MaterialType
+  url         String?
+  filePath    String?
+  fileSize    Int?
+  mimeType    String?
+  isRequired  Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@map("classroom_materials")
+}
+
+model ClassroomDiscussion {
+  id          String   @id @default(uuid())
+  classroomId String
+  userId      String
+  title       String
+  content     String
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies     DiscussionReply[]
+
+  @@map("classroom_discussions")
+}
+
+model DiscussionReply {
+  id           String   @id @default(uuid())
+  discussionId String
+  userId       String
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  discussion   ClassroomDiscussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("discussion_replies")
+}
+
+model ClassroomAttendance {
+  id          String   @id @default(uuid())
+  classroomId String
+  studentId   String
+  date        DateTime @db.Date
+  status      AttendanceStatus @default(PRESENT)
+  checkInTime DateTime?
+  checkOutTime DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId, date])
+  @@map("classroom_attendances")
+}
+
+model Exam {
+  id          String   @id @default(uuid())
+  classroomId String
+  teacherId   String
+  title       String
+  description String?
+  type        ExamType @default(ASSIGNMENT)
+  duration    Int      // in minutes
+  totalMarks  Int
+  passingMarks Int
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+  allowRetake Boolean  @default(false)
+  maxAttempts Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  tokens      ExamToken[]
+  questions   Question[]
+  attempts    ExamAttempt[]
+
+  @@map("exams")
+}
+
+model ExamToken {
+  id          String   @id @default(uuid())
+  examId      String
+  token       String   @unique
+  studentId   String?
+  isUsed      Boolean  @default(false)
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  createdBy   String
+
+  // Relations
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     User?    @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@map("exam_tokens")
+}
+
+model Question {
+  id          String   @id @default(uuid())
+  examId      String
+  schoolId    String
+  branchId    String?
+  classroomId String
+  subject     String
+  term        String
+  teacherId   String
+  question    String
+  type        QuestionType
+  options     String[] // JSON array for multiple choice
+  correctAnswer String?
+  explanation String?
+  marks       Int      @default(1)
+  difficulty  DifficultyLevel @default(MEDIUM)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  answers     Answer[]
+
+  @@map("questions")
+}
+
+model Answer {
+  id          String   @id @default(uuid())
+  questionId  String
+  studentId   String
+  answer      String
+  isCorrect   Boolean?
+  marksObtained Int?
+  timeSpent   Int?     // in seconds
+  createdAt   DateTime @default(now())
+
+  // Relations
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, studentId])
+  @@map("answers")
+}
+
+model ExamAttempt {
+  id          String   @id @default(uuid())
+  examId      String
+  studentId   String
+  token       String
+  startTime   DateTime
+  endTime     DateTime?
+  submittedAt DateTime?
+  totalMarks  Int      @default(0)
+  marksObtained Int    @default(0)
+  percentage  Float    @default(0)
+  status      AttemptStatus @default(IN_PROGRESS)
+  isOffline   Boolean  @default(false)
+  syncedAt    DateTime?
+  deviceInfo  String?  // JSON string with device details
+  cheatAttempts Int    @default(0)
+  tabSwitches Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("exam_attempts")
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  classroomId String
+  teacherId   String
+  title       String
+  description String
+  instructions String?
+  dueDate     DateTime
+  totalMarks  Int
+  isActive    Boolean  @default(true)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String   @id @default(uuid())
+  assignmentId String
+  studentId    String
+  content      String
+  filePath     String?
+  marksObtained Int?
+  feedback     String?
+  submittedAt  DateTime @default(now())
+  gradedAt     DateTime?
+  status       SubmissionStatus @default(SUBMITTED)
+
+  // Relations
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+// Enums
+enum MaterialType {
+  PDF
+  AUDIO
+  VIDEO
+  DOCUMENT
+  IMAGE
+  LINK
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum ExamType {
+  ASSIGNMENT
+  QUIZ
+  MIDTERM
+  FINAL
+  PRACTICE
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  FILL_BLANK
+  SHORT_ANSWER
+  ESSAY
+  MATCHING
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  TIMED_OUT
+  DISQUALIFIED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  GRADED
+  RETURNED
 }

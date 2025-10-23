@@ -1,6 +1,6 @@
-import { UserRole, LicenseType, LicenseStatus, NotificationType } from '@prisma/client'
+import { UserRole, LicenseType, LicenseStatus, NotificationType, MaterialType, AttendanceStatus, ExamType, QuestionType, DifficultyLevel, AttemptStatus, SubmissionStatus } from '@prisma/client'
 
-export type { UserRole, LicenseType, LicenseStatus, NotificationType }
+export type { UserRole, LicenseType, LicenseStatus, NotificationType, MaterialType, AttendanceStatus, ExamType, QuestionType, DifficultyLevel, AttemptStatus, SubmissionStatus }
 
 export interface User {
   id: string
@@ -173,4 +173,267 @@ export interface BranchSettings {
   createdAt: Date
   updatedAt: Date
   createdBy?: string
+}
+
+export interface Classroom {
+  id: string
+  schoolId: string
+  branchId?: string
+  teacherId: string
+  name: string
+  code: string
+  description?: string
+  subject: string
+  grade?: string
+  isActive: boolean
+  isPublic: boolean
+  maxStudents: number
+  currentStudents: number
+  createdAt: Date
+  updatedAt: Date
+  teacher?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+  school?: {
+    name: string
+    code: string
+  }
+  branch?: {
+    name: string
+    code: string
+  }
+  _count?: {
+    enrollments: number
+    materials: number
+    discussions: number
+  }
+}
+
+export interface ClassroomMaterial {
+  id: string
+  classroomId: string
+  title: string
+  description?: string
+  type: MaterialType
+  url?: string
+  filePath?: string
+  fileSize?: number
+  mimeType?: string
+  isRequired: boolean
+  order: number
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string
+}
+
+export interface ClassroomDiscussion {
+  id: string
+  classroomId: string
+  userId: string
+  title: string
+  content: string
+  isPinned: boolean
+  isLocked: boolean
+  createdAt: Date
+  updatedAt: Date
+  user?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+  replies?: DiscussionReply[]
+}
+
+export interface DiscussionReply {
+  id: string
+  discussionId: string
+  userId: string
+  content: string
+  createdAt: Date
+  updatedAt: Date
+  user?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+}
+
+export interface ClassroomAttendance {
+  id: string
+  classroomId: string
+  studentId: string
+  date: Date
+  status: AttendanceStatus
+  checkInTime?: Date
+  checkOutTime?: Date
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Exam {
+  id: string
+  classroomId: string
+  teacherId: string
+  title: string
+  description?: string
+  type: ExamType
+  duration: number
+  totalMarks: number
+  passingMarks: number
+  startDate: Date
+  endDate: Date
+  isActive: boolean
+  isPublished: boolean
+  allowRetake: boolean
+  maxAttempts: number
+  createdAt: Date
+  updatedAt: Date
+  classroom?: {
+    name: string
+    code: string
+    subject: string
+  }
+  teacher?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+  _count?: {
+    questions: number
+    attempts: number
+    tokens: number
+  }
+}
+
+export interface ExamToken {
+  id: string
+  examId: string
+  token: string
+  studentId?: string
+  isUsed: boolean
+  usedAt?: Date
+  expiresAt?: Date
+  createdAt: Date
+  createdBy: string
+  student?: {
+    firstName: string
+    lastName: string
+    email: string
+  }
+}
+
+export interface Question {
+  id: string
+  examId: string
+  schoolId: string
+  branchId?: string
+  classroomId: string
+  subject: string
+  term: string
+  teacherId: string
+  question: string
+  type: QuestionType
+  options: string[]
+  correctAnswer?: string
+  explanation?: string
+  marks: number
+  difficulty: DifficultyLevel
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string
+  exam?: {
+    title: string
+    type: ExamType
+  }
+  classroom?: {
+    name: string
+    subject: string
+  }
+  teacher?: {
+    firstName: string
+    lastName: string
+  }
+}
+
+export interface Answer {
+  id: string
+  questionId: string
+  studentId: string
+  answer: string
+  isCorrect?: boolean
+  marksObtained?: number
+  timeSpent?: number
+  createdAt: Date
+}
+
+export interface ExamAttempt {
+  id: string
+  examId: string
+  studentId: string
+  token: string
+  startTime: Date
+  endTime?: Date
+  submittedAt?: Date
+  totalMarks: number
+  marksObtained: number
+  percentage: number
+  status: AttemptStatus
+  isOffline: boolean
+  syncedAt?: Date
+  deviceInfo?: string
+  cheatAttempts: number
+  tabSwitches: number
+  createdAt: Date
+  updatedAt: Date
+  exam?: {
+    id: string
+    title: string
+    duration: number
+    totalMarks: number
+    passingMarks: number
+    startDate: Date
+    endDate: Date
+    isActive: boolean
+    isPublished: boolean
+    allowRetake: boolean
+    maxAttempts: number
+    createdAt: Date
+    updatedAt: Date
+    classroomId: string
+    teacherId: string
+    type: ExamType
+  }
+  questions?: Question[]
+}
+
+export interface Assignment {
+  id: string
+  classroomId: string
+  teacherId: string
+  title: string
+  description: string
+  instructions?: string
+  dueDate: Date
+  totalMarks: number
+  isActive: boolean
+  isPublished: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface AssignmentSubmission {
+  id: string
+  assignmentId: string
+  studentId: string
+  content: string
+  filePath?: string
+  marksObtained?: number
+  feedback?: string
+  submittedAt: Date
+  gradedAt?: Date
+  status: SubmissionStatus
 }
