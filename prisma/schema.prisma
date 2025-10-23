@@ -32,6 +32,10 @@ model School {
   notifications Notification[]
   classrooms  Classroom[]
   questions   Question[]
+  feeStructures FeeStructure[]
+  payments    Payment[]
+  products    Product[]
+  productRequests ProductRequest[]
 
   @@map("schools")
 }
@@ -97,6 +101,12 @@ model User {
   questions   Question[]
   answers     Answer[]
   attempts    ExamAttempt[]
+  payments    Payment[]
+  receipts    Receipt[]
+  eReceipts   EReceipt[]
+  productRequests ProductRequest[]
+  orders      Order[]
+  downloads   ProductDownload[]
 
   @@map("users")
 }
@@ -584,5 +594,325 @@ enum SubmissionStatus {
   DRAFT
   SUBMITTED
   GRADED
+  RETURNED
+}
+
+model FeeStructure {
+  id          String   @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  classId     String?
+  term        String
+  session     String
+  feeType     FeeType
+  name        String
+  description String?
+  amount      Decimal  @db.Decimal(10, 2)
+  dueDate     DateTime
+  isActive    Boolean  @default(true)
+  isRequired  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  payments    Payment[]
+  receipts    Receipt[]
+
+  @@map("fee_structures")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  schoolId        String
+  branchId        String?
+  studentId       String
+  feeStructureId  String
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  notes           String?
+  reference       String?       // Bank reference, transaction ID, etc.
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String
+
+  // Relations
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch          Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure    FeeStructure  @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  receipts        Receipt[]
+  eReceipts       EReceipt[]
+
+  @@map("payments")
+}
+
+model Receipt {
+  id          String        @id @default(uuid())
+  paymentId   String
+  feeStructureId String
+  studentId   String
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  status      ReceiptStatus @default(PENDING)
+  verifiedAt  DateTime?
+  verifiedBy  String?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  payment     Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  student     User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("receipts")
+}
+
+model EReceipt {
+  id          String   @id @default(uuid())
+  paymentId   String
+  studentId   String
+  receiptNumber String @unique
+  qrCode      String
+  watermark   String
+  pdfPath     String
+  expiresAt   DateTime
+  isDownloaded Boolean @default(false)
+  downloadedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("e_receipts")
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  name        String
+  description String?
+  category    ProductCategory
+  type        ProductType
+  price       Decimal     @db.Decimal(10, 2)
+  cost        Decimal     @db.Decimal(10, 2)
+  sku         String      @unique
+  stock       Int         @default(0)
+  minStock    Int         @default(0)
+  isActive    Boolean     @default(true)
+  isDigital   Boolean     @default(false)
+  filePath    String?     // For digital products
+  fileSize    Int?        // For digital products
+  mimeType    String?     // For digital products
+  downloadLimit Int?      // For digital products
+  downloadExpiry Int?     // Days until download expires
+  imageUrl    String?
+  tags        String[]    @default([])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   String
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  orders      Order[]
+  requests    ProductRequest[]
+  downloads   ProductDownload[]
+
+  @@map("products")
+}
+
+model ProductRequest {
+  id          String            @id @default(uuid())
+  productId   String?
+  schoolId    String
+  branchId    String?
+  requestedBy String
+  name        String
+  description String?
+  category    ProductCategory
+  estimatedPrice Decimal?       @db.Decimal(10, 2)
+  quantity    Int               @default(1)
+  status      RequestStatus     @default(PENDING)
+  approvedAt  DateTime?
+  approvedBy  String?
+  rejectedAt  DateTime?
+  rejectedBy  String?
+  rejectionReason String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  product     Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  requester   User              @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
+
+  @@map("product_requests")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  studentId   String
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
+  subtotal    Decimal     @db.Decimal(10, 2)
+  tax         Decimal     @db.Decimal(10, 2) @default(0)
+  discount    Decimal     @db.Decimal(10, 2) @default(0)
+  total       Decimal     @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  paidAt      DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  student     User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items       OrderItem[]
+  payments    OrderPayment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+
+  // Relations
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model OrderPayment {
+  id          String        @id @default(uuid())
+  orderId     String
+  amount      Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  reference   String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_payments")
+}
+
+model ProductDownload {
+  id          String   @id @default(uuid())
+  productId   String
+  orderId     String
+  studentId   String
+  downloadToken String @unique
+  downloadUrl String
+  expiresAt   DateTime
+  isUsed      Boolean  @default(false)
+  usedAt      DateTime?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("product_downloads")
+}
+
+// Enums
+enum FeeType {
+  TUITION
+  EXAMINATION
+  LIBRARY
+  TRANSPORT
+  MEALS
+  UNIFORM
+  BOOKS
+  SPORTS
+  EXTRACURRICULAR
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CARD
+  CHEQUE
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  REFUNDED
+}
+
+enum ReceiptStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ProductCategory {
+  BOOKS
+  UNIFORMS
+  STATIONERY
+  ELECTRONICS
+  SPORTS
+  FOOD
+  TRANSPORT
+  SERVICES
+  DIGITAL
+  OTHER
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+  SERVICE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
   RETURNED
 }
