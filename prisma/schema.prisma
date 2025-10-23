@@ -36,6 +36,7 @@ model School {
   payments    Payment[]
   products    Product[]
   productRequests ProductRequest[]
+  forums      Forum[]
 
   @@map("schools")
 }
@@ -62,6 +63,7 @@ model Branch {
   notifications Notification[]
   classrooms  Classroom[]
   questions   Question[]
+  forums      Forum[]
 
   @@unique([schoolId, code])
   @@map("branches")
@@ -107,6 +109,15 @@ model User {
   productRequests ProductRequest[]
   orders      Order[]
   downloads   ProductDownload[]
+  forumsCreated   Forum[]                   @relation("ForumCreator")
+  forumsApproved  Forum[]                   @relation("ForumApprover")
+  forumModerators ForumModerator[]
+  posts           Post[]
+  replies         Reply[]
+  postLikes       PostLike[]
+  replyLikes      ReplyLike[]
+  postModerations PostModeration[]
+  replyModerations ReplyModeration[]
 
   @@map("users")
 }
@@ -845,6 +856,171 @@ model ProductDownload {
   @@map("product_downloads")
 }
 
+model Forum {
+  id          String      @id @default(uuid())
+  schoolId    String
+  branchId    String?
+  name        String
+  description String?
+  category    String?
+  isPublic    Boolean     @default(true)
+  isActive    Boolean     @default(true)
+  status      ForumStatus @default(ACTIVE)
+  createdBy   String
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  creator     User        @relation("ForumCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  approver    User?       @relation("ForumApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  posts       Post[]
+  moderators  ForumModerator[]
+
+  @@map("forums")
+}
+
+model ForumModerator {
+  id        String   @id @default(uuid())
+  forumId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  forum     Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([forumId, userId])
+  @@map("forum_moderators")
+}
+
+model Post {
+  id          String     @id @default(uuid())
+  forumId     String
+  schoolId    String
+  branchId    String?
+  authorId    String
+  title       String
+  content     String
+  type        PostType   @default(DISCUSSION)
+  status      PostStatus @default(PUBLISHED)
+  isPinned    Boolean    @default(false)
+  isLocked    Boolean    @default(false)
+  viewCount   Int        @default(0)
+  likeCount   Int        @default(0)
+  replyCount  Int        @default(0)
+  lastReplyAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  forum       Forum      @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  school      School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  branch      Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replies     Reply[]
+  likes       PostLike[]
+  attachments PostAttachment[]
+  moderation  PostModeration[]
+
+  @@map("posts")
+}
+
+model Reply {
+  id          String     @id @default(uuid())
+  postId      String
+  authorId    String
+  content     String
+  status      PostStatus @default(PUBLISHED)
+  likeCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       ReplyLike[]
+  moderation  ReplyModeration[]
+
+  @@map("replies")
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+model ReplyLike {
+  id        String   @id @default(uuid())
+  replyId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  reply     Reply    @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([replyId, userId])
+  @@map("reply_likes")
+}
+
+model PostAttachment {
+  id        String   @id @default(uuid())
+  postId    String
+  fileName  String
+  filePath  String
+  fileSize  Int
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  // Relations
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_attachments")
+}
+
+model PostModeration {
+  id        String           @id @default(uuid())
+  postId    String
+  moderatorId String
+  action    ModerationAction
+  reason    String?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  post      Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  moderator User             @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@map("post_moderation")
+}
+
+model ReplyModeration {
+  id          String           @id @default(uuid())
+  replyId     String
+  moderatorId String
+  action      ModerationAction
+  reason      String?
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  reply       Reply            @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  moderator   User             @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@map("reply_moderation")
+}
+
 // Enums
 enum FeeType {
   TUITION
@@ -915,4 +1091,36 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   RETURNED
+}
+
+enum ForumStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum PostStatus {
+  PUBLISHED
+  PENDING
+  HIDDEN
+  DELETED
+}
+
+enum PostType {
+  DISCUSSION
+  ANNOUNCEMENT
+  QUESTION
+  POLL
+  EVENT
+}
+
+enum ModerationAction {
+  APPROVE
+  REJECT
+  HIDE
+  DELETE
+  PIN
+  UNPIN
+  LOCK
+  UNLOCK
 }
